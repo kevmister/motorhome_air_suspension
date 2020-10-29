@@ -4,6 +4,28 @@
 #include <MPU6050_tockn.h>
 #include <Wire.h>
 
+const char *const sensor_accelerometer_publish_str_table[] PROGMEM = {
+  "motorhome/engine/air_suspension/outbound/sensors/accelerometer/acceleration_x",
+  "motorhome/engine/air_suspension/outbound/sensors/accelerometer/acceleration_y",
+  "motorhome/engine/air_suspension/outbound/sensors/accelerometer/acceleration_z",
+  "motorhome/engine/air_suspension/outbound/sensors/accelerometer/angle_x",
+  "motorhome/engine/air_suspension/outbound/sensors/accelerometer/angle_y",
+  "motorhome/engine/air_suspension/outbound/sensors/accelerometer/angle_z",
+  "motorhome/engine/air_suspension/outbound/sensors/accelerometer/temperature"
+}
+
+typedef float (*sensor_value)();
+
+static sensor_value (*sensor_accelerometer_publish_func_table[]) = {
+  &mpu6050.getAccX(),
+  &mpu6050.getAccY(),
+  &mpu6050.getAccZ(),
+  &mpu6050.getAngleX(),
+  &mpu6050.getAngleY(),
+  &mpu6050.getAngleZ(),
+  &mpu6050.getTemp()
+}
+
 byte device_mac[] = { 0x2C,0xF7,0xF1,0x08,0x0B,0x91 };
 boolean ethernet_connected = false;
 boolean mqtt_connected = false;
@@ -76,21 +98,35 @@ void handle_program(){
   
   if(millis() - sensor_publish_timer > sensor_publish_delay){
     sensor_publish_timer = millis();
-    char accelerometer_value[8];
-    dtostrf(mpu6050.getAccX(), 6, 2, accelerometer_value);
-    client.publish("motorhome/engine/air_suspension/outbound/sensors/accelerometer/acceleration_x",accelerometer_value);
-    dtostrf(mpu6050.getAccY(), 6, 2, accelerometer_value);
-    client.publish("motorhome/engine/air_suspension/outbound/sensors/accelerometer/acceleration_y",accelerometer_value);
-    dtostrf(mpu6050.getAccZ(), 6, 2, accelerometer_value);
-    client.publish("motorhome/engine/air_suspension/outbound/sensors/accelerometer/acceleration_z",accelerometer_value);
-    dtostrf(mpu6050.getAngleX(), 6, 2, accelerometer_value);
-    client.publish("motorhome/engine/air_suspension/outbound/sensors/accelerometer/angle_x",accelerometer_value);
-    dtostrf(mpu6050.getAngleY(), 6, 2, accelerometer_value);
-    client.publish("motorhome/engine/air_suspension/outbound/sensors/accelerometer/angle_y",accelerometer_value);
-    dtostrf(mpu6050.getAngleZ(), 6, 2, accelerometer_value);
-    client.publish("motorhome/engine/air_suspension/outbound/sensors/accelerometer/angle_z",accelerometer_value);
-    dtostrf(mpu6050.getTemp(), 6, 2, accelerometer_value);
-    client.publish("motorhome/engine/air_suspension/outbound/sensors/accelerometer/temperature",accelerometer_value);
+    char accelerometer_str[8];
+    char publish_str[80];
+    for(int index = 0; index < 6; index++ ){
+      dtostrf((float)(*sensor_accelerometer_publish_func_table[index])(), 6, 2, accelerometer_str);
+      strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[index])));
+      client.publish(publish_str,accelerometer_str);
+    }
+    /*
+    strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[0])));
+    dtostrf(mpu6050.getAccX(), 6, 2, accelerometer_str);
+    client.publish(publish_str,accelerometer_str);
+    strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[1])));
+    dtostrf(mpu6050.getAccY(), 6, 2, accelerometer_str);
+    client.publish(publish_str,accelerometer_str);
+    strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[2])));
+    dtostrf(mpu6050.getAccZ(), 6, 2, accelerometer_str);
+    client.publish(publish_str,accelerometer_str);
+    strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[3])));
+    dtostrf(mpu6050.getAngleX(), 6, 2, accelerometer_str);
+    client.publish(publish_str,accelerometer_str);
+    strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[4])));
+    dtostrf(mpu6050.getAngleY(), 6, 2, accelerometer_str);
+    client.publish(publish_str,accelerometer_str);
+    strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[5])));
+    dtostrf(mpu6050.getAngleZ(), 6, 2, accelerometer_str);
+    client.publish(publish_str,accelerometer_str);
+    strcpy_P(publish_str, (char *)pgm_read_word(&(mqtt_publish_string_table[6])));
+    dtostrf(mpu6050.getTemp(), 6, 2, accelerometer_str);
+    client.publish(publish_str,accelerometer_str);
     /*
     Serial.println("=======================================================");
     Serial.print("temp : ");Serial.println(mpu6050.getTemp());
